@@ -1,5 +1,3 @@
-figs/*.png
-vids/*.mp4
 src/*.pyc
 *.DS_Store
 __pycache__
