@@ -5,6 +5,7 @@ from Cell_Plan import Cell_Plan
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import os
+import shutil
 
 class Environment:
     '''
@@ -13,7 +14,10 @@ class Environment:
     def __init__(self, config):
         # constants
         self.fig_out_dir = os.path.join('..', 'figs')
+
+        self.vid_out_dir = os.path.join('..', 'vids')
         self.vid_out_path = os.path.join('..', 'vids', 'sim.mp4')
+
 
         # configs
         self.uavs = util.set_or_err(config, 'uavs') # List[UAV]
@@ -68,6 +72,7 @@ class Environment:
         - All drones have exhausted their paths
     '''
     def simulate(self):
+        self.create_dirs()
         self.clear_fig_output()
         while True:
             self.step()
@@ -82,6 +87,7 @@ class Environment:
             if self.mission_time and (self.total_time > self.mission_time):
                 break
         util.create_video(self.vid_out_path, self.fig_out_dir)
+        self.clean_up()
 
     '''
     Sets the paths of each uav in the environment according to the given tuples
@@ -159,5 +165,22 @@ class Environment:
             os.remove(os.path.join(self.fig_out_dir, f))
 
 
+    '''
+    Create output directories if they don't exists
+    '''
+    def create_dirs(self):
+        # make the figure output directory if it doesn't exist
+        if not os.path.exists(self.fig_out_dir):
+            os.mkdir(self.fig_out_dir)
+        if not os.path.exists(self.vid_out_dir):
+            os.mkdir(self.vid_out_dir)
+
+    '''
+    Delete figure directory and its contents
+    '''
+    def clean_up(self):
+        shutil.rmtree(self.fig_out_dir)
+
+        
 
 
