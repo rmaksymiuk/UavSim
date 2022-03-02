@@ -6,7 +6,7 @@ UML Diagram Website Used:
 ### Creating Conda Environment
 You will need anaconda or miniconda to create the environment needed to run the simulator. See how to install them [here](https://docs.conda.io/en/latest/miniconda.html)
 Run the following line to create the environment you need to run the following line
-`conda env create -f environment.yml`
+`conda env create -f sharkspotting.yml`
 
 ## Running the Simulation
 To run a simulation you will need to create a driver for the simulator. There is an example driver in "src/simulate.py"
