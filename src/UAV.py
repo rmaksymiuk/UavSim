@@ -237,7 +237,7 @@ If there is a "false positive" return a random location in the frame
 '''
 def default_shark_detected(uav, shark):
     true_pos_optimal = 0.9 # Performance in an ideal environemnt
-    false_pos_optimal = 0.01 # False postive rate in an ideal environment
+    false_pos_optimal = 0.001 # False postive rate in an ideal environment
 
     cur_frame = uav.get_frame()
     corner = list(cur_frame.exterior.coords)[0]
