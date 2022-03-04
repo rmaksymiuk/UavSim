@@ -79,25 +79,32 @@ class Change_Alt_Plan(Plan):
     In this plan, we will not change drone behavior based on the spotting of sharks
     '''
     def update_paths(self, env, spotted):
-        paths = [[] for i in spotted]
-        for uav, pts in spotted:
+        paths = [[] for uav in spotted]
+        for i, tup in enumerate(spotted):
+            uav, pts = tup
             for pt in pts:
                 pt.x
                 pt.y
-                paths.append(Vec3d(pt.x, pt.y, self.traverse_alt/2))
+                paths[i].append(Vec3d(pt.x, pt.y, self.traverse_alt/2))
 
         final_paths = []
         for j, path in enumerate(paths):
             # path_with_control = path + [env.base_pos]
-            print(j + ": " + self.speeds[spotted[j]])
+            # print(j + ": " + self.speeds[spotted[j]])
             
-            path_speeds = [(self.speeds[spotted[j][0].name]/2) for p in paths]
+            print(spotted[j][0].name)
+            
             # final_paths.append((spotted[j[0], Path(path, path_speeds)))
 
         for p in range(len(paths)):
-            idx = env.uav.index(spotted[p])
+            idx = env.uavs.index(spotted[p][0])
             for k in range(len(paths[p])):
-                env.uav[idx].path.add_point_to_front(paths[p][k], path_speeds[p][k])
+                path_speeds = [(self.speeds[spotted[p][0].name]) for n in range(len(paths[p]))]
+                print("len: " + str(len(paths[p])))
+                print("path: " + str(paths[p][k]))
+                print("\nspeed: " + str(path_speeds[k]))
+                print(env.uavs[idx])
+                env.uavs[idx].path.add_point_to_front(paths[p][k], (path_speeds[k])/2)
 
         return []
 
