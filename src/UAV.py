@@ -33,12 +33,15 @@ class UAV:
         self.horiz_angle = util.set_or_default(config, 'horiz_angle', 45) # associated with y 
         self.speed_cost = util.set_or_default(config, 'speed_cost', default_speed_cost)
         self.shark_detected = util.set_or_default(config, 'shark_detected', default_shark_detected)
+        self.already_seen_buffer = util.set_or_default(config, 'seen_buffer', 20)
 
         self.color = None
         self.energy_used = 0.0
         self.time_since_frame = 0.0
         self.last_plot_time = 0.0
         self.area_covered = Polygon([]) # Using Shapely to manage area covered
+        self.spotted = Polygon([]) # If a UAV spots a shark, it won't report it if it has already seen it
+
         self.history = [] # Contains a list of points the UAV has traveled to 
         self.TPs = [] # Contains [Polygon, time] tuples where a UAV spotted a shark
         self.FNs = [] # Contains [Polygon, time] typles where a UAV failed to spot a shark
@@ -142,12 +145,20 @@ class UAV:
                 if detect_type == 'TP':
                     shark.spotted(self, total_time)
                     self.TPs.append((frame, total_time))
-                    spotted_at.append(detected_pos)
+                    detected_as_point = detected_pos.to_point()
+                    if not self.spotted.contains(detected_as_point):
+                        self.spotted = unary_union([self.spotted, detected_as_point.buffer(self.already_seen_buffer)])
+                        spotted_at.append(detected_pos)
                 elif detect_type =='FP':
+                    detected_as_point = detected_pos.to_point()
                     self.FPs.append((frame, total_time))
                     spotted_at.append(detected_pos)
+                    if not self.spotted.contains(detected_as_point):
+                        self.spotted = unary_union([self.spotted, detected_as_point.buffer(self.already_seen_buffer)])
+                        spotted_at.append(detected_pos)
                 elif detect_type =='FN':
                     self.FNs.append((frame, total_time))
+        print("Already Seen", self.spotted.area)
         return spotted_at
 
 
