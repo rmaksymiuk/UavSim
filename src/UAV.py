@@ -61,7 +61,7 @@ class UAV:
             return
         self.path = path
         new_point = self.path.points[0]
-        new_speed = self.path.speeds.pop(0)
+        new_speed = self.path.speeds[0]
         self.update_vel(self.pos, new_point, new_speed)
 
 
@@ -117,12 +117,13 @@ class UAV:
             # UAV needs to change its velocity to pursue the next goal
             if step_taken.intersects(self.path.points[0].to_point()):
                 new_pos = self.path.points.pop(0)
+                self.path.speeds.pop(0)
                 self.history.append(new_pos)
 
 
                 # If the UAV still has tasks
                 if not self.path.empty():
-                    new_speed = self.path.speeds.pop(0)
+                    new_speed = self.path.speeds[0]
                     self.update_vel(new_pos, self.path.points[0], new_speed)
 
                 # If the UAV has completed all tasks
