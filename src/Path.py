@@ -10,4 +10,8 @@ class Path:
     def empty(self):
         return len(self.points) == 0
 
+    def add_point_to_front(self, point, speed):
+        self.points.insert(0, point)
+        self.speeds.insert(0, speed)
+
 

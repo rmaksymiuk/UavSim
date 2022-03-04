@@ -6,9 +6,8 @@ from UAV import UAV
 from Environment import Environment
 from Shark import Shark
 from Cell_Plan import Cell_Plan
+from Change_Alt_Plan import Change_Alt_Plan
 import util
-
-
 
 def sim():
     control_pos = Vec3d()
@@ -42,12 +41,11 @@ def sim():
         'sharks': util.spawn_sharks(3, env_boundary),
         'boundary': env_boundary,
         'base_pos': control_pos,
-        'plan': Cell_Plan({})
+        'plan': Change_Alt_Plan({})
     }
 
     env = Environment(env_config)
     env.simulate()
-
 
 
 if __name__ == "__main__":

@@ -34,18 +34,3 @@ class Plan:
         return [(uav, Path()) for uav in env.uavs]
 
         
-
-
-
-        
-
-        
-
-
-
-
-
-
-
-
-
