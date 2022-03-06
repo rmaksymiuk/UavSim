@@ -42,11 +42,12 @@ def sim():
         'sharks': util.spawn_sharks(3, env_boundary),
         'boundary': env_boundary,
         'base_pos': control_pos,
-        'plan': Cell_Plan({})
+        'plan': Cell_Plan({}),
+        'timestep': 1 
     }
 
     env = Environment(env_config)
-    env.simulate()
+    env.simulate(plotting=False)
 
 
 

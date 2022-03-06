@@ -1,5 +1,6 @@
 
 from shapely.geometry import Point, Polygon
+from shapely.ops import unary_union
 from Vector import Vec2d, Vec3d
 from Shark import Shark
 import numpy as np
@@ -91,7 +92,10 @@ def spawn_sharks(n, poly, speed=1):
     for i in range(n):
         rand_vel = Vec3d().gen_random()
         rand_vel.set_z(0)
-        sharks.append(Shark({'init_pos': start_points[i].to_Vec3d(), 'init_vel': rand_vel.unit().scale(speed)}))
+        sharks.append(Shark({
+            'name': 'Shark_' + str(i), 
+            'init_pos': start_points[i].to_Vec3d(), 
+            'init_vel': rand_vel.unit().scale(speed)}))
     return sharks
 
 
@@ -116,6 +120,16 @@ def create_video(video_name, image_dir, extention='png'):
 
     video.release()
     cv2.destroyAllWindows()
+
+
+'''
+Given a list of polygons, reuturn the unary union of all of the polygons
+'''
+def list_union(pgons):
+    accum = Polygon([])
+    for pgon in pgons:
+        accum = unary_union([accum, pgon])
+    return accum
 
 
 

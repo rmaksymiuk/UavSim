@@ -1,9 +1,11 @@
 import util
 from shapely.geometry import Point, Polygon
 import numpy as np
+import pandas as pd
 from Cell_Plan import Cell_Plan
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from shapely.ops import unary_union
 import os
 import shutil
 
@@ -15,8 +17,9 @@ class Environment:
         # constants
         self.fig_out_dir = os.path.join('..', 'figs')
 
-        self.vid_out_dir = os.path.join('..', 'vids')
-        self.vid_out_path = os.path.join('..', 'vids', 'sim.mp4')
+        self.vid_out_dir = os.path.join('..', 'results')
+        self.vid_out_path = os.path.join('..', 'results', 'sim.mp4')
+        self.stats_out_path = os.path.join('..', 'results', 'stats.csv')
 
 
         # configs
@@ -43,7 +46,7 @@ class Environment:
     '''
     Takes one step through the environment
     '''
-    def step(self):
+    def step(self, plotting):
         # Step sharks through the simulation
         self.total_time += self.timestep
         self.time_since_plot += self.timestep
@@ -61,7 +64,7 @@ class Environment:
 
         
         # Check if we should plot results
-        if self.time_since_plot > self.plot_every:
+        if plotting and (self.time_since_plot > self.plot_every):
             self.time_since_plot = 0.
             self.plot_env()
 
@@ -71,23 +74,25 @@ class Environment:
         - Mission time exceeds max time limit
         - All drones have exhausted their paths
     '''
-    def simulate(self):
-        self.create_dirs()
-        self.clear_fig_output()
+    def simulate(self, plotting=True):
+        if plotting:
+            self.create_dirs()
+            self.clear_fig_output()
         while True:
-            self.step()
+            self.step(plotting)
             end = True
             for uav in self.uavs:
                 if uav.path:
-                    print(uav.name, len(uav.path.points))
                     end = False
                     break
             if end:
                 break
             if self.mission_time and (self.total_time > self.mission_time):
                 break
-        util.create_video(self.vid_out_path, self.fig_out_dir)
-        self.clean_up()
+        if plotting:
+            util.create_video(self.vid_out_path, self.fig_out_dir)
+            self.clean_up()
+        self.get_stats()
 
     '''
     Sets the paths of each uav in the environment according to the given tuples
@@ -146,6 +151,61 @@ class Environment:
         ax.legend()
         plt.savefig(os.path.join(self.fig_out_dir, '%08.03f' % self.total_time + '.png'))
 
+    '''
+    Create a dataframe with the statistics for this simulation and output it to
+    the result directory
+    '''
+    def get_stats(self):
+        # Build UAV df
+        # Name, TP, FP, FN, Energy Used, Area Covered
+        uav_dfs = []
+        for uav in self.uavs:
+            uav_dfs.append(uav.get_stats())
+        uav_df = pd.DataFrame(uav_dfs)
+
+        # Build Shark Df
+        # Shark, UAV
+        shark_dfs = []
+        for shark in self.sharks:
+            one_shark_df = shark.get_stats()
+            if len(one_shark_df) > 0:
+                # only add the shark df if the shark was seen
+                shark_dfs.append(one_shark_df)
+        total_sharks_spotted = len(shark_dfs)
+        if len(shark_dfs) > 0:
+            shark_df = pd.concat(shark_dfs, axis=0)
+            sharks_by_uav = shark_df['UAV'].value_counts()
+            sharks_by_uav.name = 'Num_Sharks'
+            uav_df = pd.merge(uav_df, sharks_by_uav, left_on='Name', right_index=True, how='left')
+            uav_df.loc[pd.isna(uav_df['Num_Sharks']), 'Num_Sharks'] = 0
+        else:
+            uav_df['Num_Sharks'] = 0
+            
+
+        # Calculate totals
+        total_values = uav_df.aggregate({
+            'TP': 'sum',
+            'FP': 'sum',
+            'FN': 'sum',
+            'Energy_Used': 'sum',
+            'Area_Covered': util.list_union})
+        total_values['Name'] = 'Total'
+        total_values['Num_Sharks'] = total_sharks_spotted
+
+        # Merge total with UAVs
+        all_df = pd.concat([uav_df, total_values.to_frame().transpose()], axis=0).reset_index()
+
+        # Final Calculations
+        all_df['Precision'] = all_df['TP'] / (all_df['TP'] + all_df['FP'])
+        all_df.loc[(all_df['TP'] == 0) & (all_df['FN'] == 0), 'FN'] = np.nan # Handle div by 0 if no TP or FN
+        all_df['Recall'] = all_df['TP'] / (all_df['TP'] + all_df['FN'])
+        all_df['F1'] = 2 * all_df['Precision'] * all_df['Recall'] / (all_df['Precision'] + all_df['Recall'])
+        all_df['PCT_Covered'] = all_df['Area_Covered'].apply(lambda x: x.area) / self.boundary.area
+        all_df['PCT_Spotted'] = all_df['Num_Sharks'] / len(self.sharks)
+
+        interesting_cols = all_df[['Name', 'Precision', 'Recall', 'F1', 'Energy_Used', 'PCT_Covered', 'PCT_Spotted']]
+        print(interesting_cols)
+        interesting_cols.to_csv(self.stats_out_path, index=False)
 
     '''
     Assign a color to each UAV
