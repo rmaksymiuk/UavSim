@@ -45,6 +45,8 @@ class Environment:
 
     '''
     Takes one step through the environment
+    If plotting is true, plot the progress of the environment as you step through
+    it, otherwise, skip plotting
     '''
     def step(self, plotting):
         # Step sharks through the simulation
@@ -73,6 +75,9 @@ class Environment:
     Simulates the environment until
         - Mission time exceeds max time limit
         - All drones have exhausted their paths
+    If plotting is true, the state of the environment will be plotted 
+    as the simulation proceeds, and a video of the simulation will be
+    comipled at the end. Otherwise, only stats are saved from the simulation
     '''
     def simulate(self, plotting=True):
         if plotting:
@@ -150,6 +155,7 @@ class Environment:
 
         ax.legend()
         plt.savefig(os.path.join(self.fig_out_dir, '%08.03f' % self.total_time + '.png'))
+        plt.close()
 
     '''
     Create a dataframe with the statistics for this simulation and output it to
