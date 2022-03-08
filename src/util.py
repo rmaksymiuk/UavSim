@@ -64,8 +64,8 @@ def gen_random(poly, n_points):
     points = []
     minx, miny, maxx, maxy = poly.bounds
     while len(points) < n_points:
-        x_loc = np.random.uniform(minx, maxx, size=1)
-        y_loc = np.random.uniform(miny, maxy, size=1)
+        x_loc = np.random.uniform(minx, maxx, size=1)[0]
+        y_loc = np.random.uniform(miny, maxy, size=1)[0]
         pnt = Point(x_loc, y_loc)
         if poly.contains(pnt):
             points.append(Vec2d(x_loc, y_loc))
