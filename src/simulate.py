@@ -36,17 +36,14 @@ def sim():
             (0, 0)
         ])
 
+    #Environment configured with Changing Altitude Plan
     env_config = {
         'uavs': [UAV(uav1_config), UAV(uav2_config)],
         'sharks': util.spawn_sharks(3, env_boundary),
         'boundary': env_boundary,
         'base_pos': control_pos,
-<<<<<<< HEAD
-        'plan': Change_Alt_Plan({})
-=======
-        'plan': Cell_Plan({}),
+        'plan': Change_Alt_Plan({}),
         'timestep': 0.01 # If you are plotting/creating a vid timestep should be < 1 / fps otherwise, 0.1 is okay.
->>>>>>> main
     }
 
     env = Environment(env_config)
