@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 import util
 from Vector import Vec2d, Vec3d
@@ -33,6 +34,8 @@ class UAV:
         self.horiz_angle = util.set_or_default(config, 'horiz_angle', 45) # associated with y 
         self.speed_cost = util.set_or_default(config, 'speed_cost', default_speed_cost)
         self.shark_detected = util.set_or_default(config, 'shark_detected', default_shark_detected)
+        # If a uav spots a shark within this buffer of places where it already thinks it saw a shark,
+        # the spotting will not be reported to the Planner class
         self.already_seen_buffer = util.set_or_default(config, 'seen_buffer', 20)
 
         self.color = None
@@ -110,12 +113,11 @@ class UAV:
         if self.path:
 
             step_taken = LineString([self.pos.to_point(), new_pos.to_point()]).buffer(1)
-            print('cur_pos', new_pos.vec)
-            print('goal', self.path.points[0].vec)
 
             # We can say that the UAV stops when it reaches its goal
             # UAV needs to change its velocity to pursue the next goal
             if step_taken.intersects(self.path.points[0].to_point()):
+                print('%10s' % self.name, 'reached goal.', '%4d' % (len(self.path.points) - 1), 'to go.')
                 new_pos = self.path.points.pop(0)
                 self.path.speeds.pop(0)
                 self.history.append(new_pos)
@@ -159,7 +161,6 @@ class UAV:
                         spotted_at.append(detected_pos)
                 elif detect_type =='FN':
                     self.FNs.append((frame, total_time))
-        print("Already Seen", self.spotted.area)
         return spotted_at
 
 
@@ -208,6 +209,16 @@ class UAV:
         # Plot location of UAV
         ax.scatter([self.pos.x], [self.pos.y], [self.pos.z], color = self.color, label=self.name)
         self.last_plot_time = total_time
+
+    '''
+    Returns a dataframe containing the stats for the current UAV
+    '''
+    def get_stats(self):
+        TP = len(self.TPs)
+        FP = len(self.FPs)
+        FN = len(self.FNs)
+        index = ['Name', 'TP', 'FP', 'FN', 'Energy_Used', 'Area_Covered']
+        return pd.Series([self.name, TP, FP, FN,  self.energy_used, self.area_covered], index=index)
 
 
     '''

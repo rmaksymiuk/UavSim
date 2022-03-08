@@ -1,5 +1,6 @@
 
 from Vector import Vec2d, Vec3d
+import pandas as pd
 import util
 
 
@@ -8,6 +9,7 @@ class Shark:
     Initialize the state of the shark
     '''
     def __init__(self, config):
+        self.name = util.set_or_err(config, 'name')
         self.pos = util.set_or_err(config, 'init_pos')
         self.velocity = util.set_or_default(config, 'init_vel', Vec3d())
         self.spotted_by = [] # List of (UAV, time) tuples where the shark was spotted 
@@ -32,3 +34,16 @@ class Shark:
             ax.scatter([self.pos.x], [self.pos.y], [self.pos.z], color='green', marker='^', label="Spotted Shark")
         else:
             ax.scatter([self.pos.x], [self.pos.y], [self.pos.z], color='red', marker='^', label="Not Spotted Shark")
+
+
+    '''
+    Return the UAVs that spotted the shark
+    '''
+    def get_stats(self):
+        # Get unique uavs
+        new_spotted_by = list(set([uav.name for uav, time in self.spotted_by]))
+        uav_tups = [(self.name, uav_name) for uav_name in new_spotted_by]
+        return pd.DataFrame(uav_tups, columns=['Shark', 'UAV'])
+
+
+
