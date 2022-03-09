@@ -249,5 +249,3 @@ class Environment:
         shutil.rmtree(self.fig_out_dir)
 
         
-
-
