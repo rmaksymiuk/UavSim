@@ -75,13 +75,22 @@ class Change_Alt_Plan(Plan):
 
         return final_paths
 
+    def update_paths(self, env, spotted):
+        paths = []
+        for uav, pts in spotted:
+            pt = pts[0].to_Vec3d(10)
+            paths.append((uav, Path([pt] + uav.path.points, 
+                [self.default_speed] + uav.path.speeds)))
+        return paths
+
+
     '''
     In this plan, we will not change drone behavior based on the spotting of sharks
     '''
-    def update_paths(self, env, spotted):
-        paths = [[] for uav in spotted]
+    def update_paths1(self, env, spotted):
+        paths = []
         for i, tup in enumerate(spotted):
-            uav, pts = tup
+            uavs, pts = tup
             for pt in pts:
                 pt.x
                 pt.y

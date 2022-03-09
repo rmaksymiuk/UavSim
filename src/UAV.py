@@ -60,7 +60,7 @@ class UAV:
         if not path:
             self.path = None
             return
-        if  path.empty(): 
+        if path.empty(): 
             self.path = None
             return
         self.path = path
