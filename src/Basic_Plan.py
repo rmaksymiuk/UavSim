@@ -9,13 +9,13 @@ from Vector import Vec2d, Vec3d
 from Path import Path
 from Plan import Plan
 
-class Cell_Plan(Plan):
+class Basic_Plan(Plan):
     '''
     Plan class will get a configuration dictionary as input
     to set the variables of a particular plan
     '''
     def __init__(self, config):
-        super(Cell_Plan, self).__init__(config)
+        super(Basic_Plan, self).__init__(config)
         self.traverse_alt = util.set_or_default(config, 'traverse_alt', 30)
         self.speeds = util.set_or_default(config, 'uav_speeds', None)
         self.default_speed = 20
