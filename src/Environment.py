@@ -2,7 +2,7 @@ import util
 from shapely.geometry import Point, Polygon
 import numpy as np
 import pandas as pd
-from Cell_Plan import Cell_Plan
+from Basic_Plan import Basic_Plan
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from shapely.ops import unary_union
@@ -34,7 +34,7 @@ class Environment:
         self.min_plot_z = util.set_or_default(config, "min_plot_z", -10)
         self.max_plot_z = util.set_or_default(config, "max_plot_z", 50)
         self.plot_height = util.set_or_default(config, 'plot_height', 50)
-        self.plan = util.set_or_default(config, 'plan', Cell_Plan({})) # There 
+        self.plan = util.set_or_default(config, 'plan', Basic_Plan({})) # There 
 
         self.total_time = 0.0
         self.time_since_plot = 0.0
@@ -202,8 +202,9 @@ class Environment:
         all_df = pd.concat([uav_df, total_values.to_frame().transpose()], axis=0).reset_index()
 
         # Final Calculations
-        all_df['Precision'] = all_df['TP'] / (all_df['TP'] + all_df['FP'])
         all_df.loc[(all_df['TP'] == 0) & (all_df['FN'] == 0), 'FN'] = np.nan # Handle div by 0 if no TP or FN
+        all_df.loc[(all_df['TP'] == 0) & (all_df['FP'] == 0), 'FP'] = np.nan # Handle div by 0 if no TP or FP
+        all_df['Precision'] = all_df['TP'] / (all_df['TP'] + all_df['FP'])
         all_df['Recall'] = all_df['TP'] / (all_df['TP'] + all_df['FN'])
         all_df['F1'] = 2 * all_df['Precision'] * all_df['Recall'] / (all_df['Precision'] + all_df['Recall'])
         all_df['PCT_Covered'] = all_df['Area_Covered'].apply(lambda x: x.area) / self.boundary.area

@@ -8,6 +8,7 @@ from shapely.geometry import Point, Polygon
 from Vector import Vec2d, Vec3d
 from Path import Path
 from Plan import Plan
+import sys
 
 class Cell_Plan(Plan):
     '''
@@ -64,8 +65,12 @@ class Cell_Plan(Plan):
                     centroids.append(new_square.centroid)
 
         # Each drone will be assigned an even number of squares
-        squares_per_drone = np.ceil(len(squares) / len(env.uavs))
-        paths = [[] for uav in env.uavs]
+        baseCounter = 0
+        for drone in env.uavs:
+            if drone.role == 'base':
+                baseCounter = baseCounter + 1
+        squares_per_drone = np.ceil(len(squares) / (len(env.uavs) - baseCounter))
+        paths = [[] for uav in range(len(env.uavs) - baseCounter)]
         for i, centroid in enumerate(centroids):
             cur_drone = int(i // squares_per_drone)
             paths[cur_drone].append(Vec3d(centroid.x, centroid.y, self.traverse_alt))
@@ -74,17 +79,49 @@ class Cell_Plan(Plan):
         final_paths = []
         for i, path in enumerate(paths):
             path_with_control = path + [env.base_pos]
+            print(path_with_control)
             path_speeds = [self.speeds[env.uavs[i].name] for p in path_with_control]
             final_paths.append((env.uavs[i], Path(path_with_control, path_speeds)))
-
+        #print(final_paths)
+        #print(type(final_paths))
+        #for i in final_paths:
+        #    print(i)
+        #sys.exit()
         return final_paths
 
     '''
     In this plan, we will not change drone behavior based on the spotting of sharks
     '''
+
     def update_paths(self, env, spotted):
-        return []
-        
+        free_drones = []
+        paths = []
+        final_paths = []
+        # Adding the drones with none path to an array
+        for possible_free_drone in env.uavs:
+            if possible_free_drone.role == 'base':
+                free_drones.append(possible_free_drone)
+        print("UAVs: ", env.uavs)
+        # print("Free Drones: ")
+        # print(free_drones)
+        for uav, pts in spotted:
+            if uav.role == 'observer':
+                for pt in pts:
+                    # sets the amplitude of the drone to be z = 15
+                    pt3d = pt.to_Vec3d(15)
+                    paths.append(pt3d)
+                    print("Pt: ", pt3d)
+        if not free_drones:
+            return []
+        else:
+            test = len(paths)
+            print("Len :", test)
+            speed_counter = len(paths)
+            lst = [20] * (speed_counter + 1)
+            final_paths.append((free_drones[0], Path(paths + [env.base_pos], lst)))
+            #final_paths.append((free_drones[0], Path([env.base_pos], [20])))
+            return final_paths
+        # return []
 
     '''
     At the given traversal altitude, 

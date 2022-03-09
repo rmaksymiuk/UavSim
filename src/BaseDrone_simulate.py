@@ -5,51 +5,62 @@ from shapely.geometry import Point, Polygon, LineString
 from UAV import UAV
 from Environment import Environment
 from Shark import Shark
-from Change_Alt_Plan import Change_Alt_Plan
-from Basic_Plan import Basic_Plan
+from BaseDrone_Plan import Cell_Plan
 import util
+
 
 def sim():
     control_pos = Vec3d()
-    
+
     uav1_config = {
         'init_pos': control_pos,
         'init_energy': 100,
-        'name': 'uav1'
+        'name': 'uav1',
+        'role': 'observer'
     }
     uav2_config = {
         'init_pos': control_pos,
         'init_energy': 100,
-        'name': 'uav2'
+        'name': 'uav2',
+        'role': 'observer'
     }
     uav3_config = {
         'init_pos': control_pos,
         'init_energy': 100,
-        'name': 'uav3'
+        'name': 'uav3',
+        'role': 'base'
     }
 
     env_boundary = Polygon([
-            (0, 0), 
-            (500, 0),
-            (500, 500),
-            (0, 500),
-            (0, 0)
-        ])
+        (0, 0),
+        (500, 0),
+        (500, 500),
+        (0, 500),
+        (0, 0)
+    ])
 
-    #Environment configured with Changing Altitude Plan
     env_config = {
-        'uavs': [UAV(uav1_config), UAV(uav2_config)],
+        'uavs': [UAV(uav1_config), UAV(uav2_config), UAV(uav3_config)],
         'sharks': util.spawn_sharks(3, env_boundary),
         'boundary': env_boundary,
         'base_pos': control_pos,
-        'plan': Change_Alt_Plan({}),
-
-        'timestep': 0.01 # If you are plotting/creating a vid timestep should be < 1 / fps otherwise, 0.1 is okay.
+        'plan': Cell_Plan({}),
+        'timestep': 0.1  # If you are plotting/creating a vid timestep should be < 1 / fps otherwise, 0.1 is okay.
     }
-
+    sharks_spotted = 0
     env = Environment(env_config)
     # Video created if plotting=True, else no video
     env.simulate(plotting=True)
+
+    ##env.shark_spotted(detected_pos.to_point())
+    # print(env.shark_spotted)
+
+    print("Number Sharks: ", env.number_sharks)
+
+
+#   print("Counter :", uav.counter)
+
+##print(env.uavs.spotted_at1)
 
 
 if __name__ == "__main__":

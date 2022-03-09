@@ -30,8 +30,9 @@ class UAV:
         self.max_dist_base = util.set_or_default(config, 'max_dist_base', None)
         self.role = util.set_or_default(config, 'role', None)
         # Angles should be provided in radians
-        self.lat_angle = util.set_or_default(config, 'lat_angle', 45) # associated with x
-        self.horiz_angle = util.set_or_default(config, 'horiz_angle', 45) # associated with y 
+        self.lat_angle = util.set_or_default(config, 'lat_angle', 0.785) # associated with x #radians
+        self.horiz_angle = util.set_or_default(config, 'horiz_angle', 0.785) # associated with #radians 
+        self.max_rot_vel = util.set_or_default(config, 'max_rot_velocity', 0.174) # radians
         self.speed_cost = util.set_or_default(config, 'speed_cost', default_speed_cost)
         self.shark_detected = util.set_or_default(config, 'shark_detected', default_shark_detected)
         # If a uav spots a shark within this buffer of places where it already thinks it saw a shark,
@@ -162,6 +163,26 @@ class UAV:
                 elif detect_type =='FN':
                     self.FNs.append((frame, total_time))
         return spotted_at
+
+
+    '''
+    Adjusts the velocity accounting for maximum rotational velocity
+    so that the next waypoint can be reached
+    '''
+    def adjust_vel(self, cur_pos, new_pos, speed):
+        point_diff = new_pos - cur_pos
+        point_diff_mag = point_diff.mag()
+        if point_diff_mag == 0:
+            self.velocity = Vec3d()
+            return
+        cur_diff_angle = self.dir.angle(point_diff) 
+        safe_time = self.cur_diff_angle / self.max_rot_vel
+        safe_speed = point_diff_mag / safe_time
+        next_speed = min(speed, safe_speed)
+
+        self.velocity = self.dir.scale(next_speed)
+        y_ang_pt, z_ang_pt = point_diff.angle_to_origin()
+        y_ang_vel, z_ang_vel = self.velocity.angle_to_origin()
 
 
 
@@ -303,6 +324,9 @@ def default_shark_detected(uav, shark):
         
         prob = 1 - (1 - false_pos_optimal) * prob
         detected = np.random.choice([0, 1], size=1, p=[1 - prob, prob])[0]
+
+        return ('TN', None) # For now we wont worry about false positives
+
         if detected == 1:
             return ('FP', util.gen_random(cur_frame, n_points=1)[0])
         else:

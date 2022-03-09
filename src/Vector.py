@@ -74,6 +74,12 @@ class Vec2d:
         return self.from_vec(self.vec / self.mag())
 
     '''
+    Find the angle between two vectors
+    '''
+    def angle(self, other):
+        return np.arccos(self.unit().vec @ other.unit().vec)
+
+    '''
     Returns a vector rotated clockwise
     '''
     def rotate_90(self):
@@ -149,11 +155,48 @@ class Vec3d:
         return Vec3d(result[0], result[1], result[2])
 
     '''
+    Rotate the vector by the given angle
+    Derived through unit vector decomposition
+    '''
+    def rotate(self, theta_y, theta_z):
+        rot_arr = np.array(
+            [[np.cos(theta_y) * np.cos(theta_z), -1 * np.sin(theta_y) * np.cos(theta_z), np.sin(theta_z)],
+             [np.sin(theta_y) * np.cos(theta_z), np.cos(theta_y) * np.cos(theta_z), -1 * np.sin(theta_z)],
+             [np.sin(theta_z), -1 * np.sin(theta_z), 0]]
+        )
+        return Vec3d().from_vec(rot_arr @ self.vec)
+
+    '''
     Convert the 3d vector into a 2d point object. Only use the
     first two components of the vector
     '''
     def to_point2d(self):
         return Point(self.x, self.y)
+
+    '''
+    Compute the angle in radians between this vector and another
+    one
+    '''
+    def angle(self, other):
+        return np.arccos(self.unit().vec @ other.unit().vec) 
+
+
+    '''
+    Compute the angle to the origin in the y componant and the z
+    component. In other words, the angle needed to rotate the vector
+    about the z axis, and the vector needed to rotate the vector
+    about the y axis
+    '''
+    def angle_to_origin(self):
+        y_comp = Vec2d().from_vec(np.array([self.x, self.y]))
+        z_comp = Vec2d().from_vec(np.array([self.x, self.z]))
+        y_ang = y_comp.angle(Vec2d(1, 0))
+        z_ang = z_comp.angle(Vec2d(1, 0))
+        if y_comp.y < 0:
+            y_ang = 2 * np.pi - y_ang
+        if z_comp.y < 0:
+            z_ang = 2 * np.pi - z_ang
+        return y_ang, z_ang
 
     '''
     Convert the 3d vector into a shapely Point object
