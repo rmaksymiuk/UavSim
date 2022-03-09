@@ -42,9 +42,9 @@ def sim():
         'sharks': util.spawn_sharks(3, env_boundary),
         'boundary': env_boundary,
         'base_pos': control_pos,
-        'plan': Change_Alt_Plan({}),
+        'plan': Basic_Plan({}),
 
-        'timestep': 0.01 # If you are plotting/creating a vid timestep should be < 1 / fps otherwise, 0.1 is okay.
+        'timestep': 0.1 # If you are plotting/creating a vid timestep should be < 1 / fps otherwise, 0.1 is okay.
     }
 
     env = Environment(env_config)
