@@ -6,6 +6,7 @@ from Basic_Plan import Basic_Plan
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from shapely.ops import unary_union
+from Vector import Vec3d
 import os
 import shutil
 
@@ -29,17 +30,19 @@ class Environment:
         self.base_pos = util.set_or_err(config, 'base_pos') # Vec3d
 
         self.timestep = util.set_or_default(config, 'timestep', 0.01)
-        self.plot_every = util.set_or_default(config, 'plotstep', 1)
+        self.plot_every = util.set_or_default(config, 'plotstep', 0.5)
         self.mission_time = util.set_or_default(config, 'mission_time', None)
         self.min_plot_z = util.set_or_default(config, "min_plot_z", -10)
         self.max_plot_z = util.set_or_default(config, "max_plot_z", 50)
         self.plot_height = util.set_or_default(config, 'plot_height', 50)
         self.plan = util.set_or_default(config, 'plan', Basic_Plan({})) # There 
+        self.env_force = util.set_or_default(config, 'env_force', Vec3d(0, 0, -9.81))
 
         self.total_time = 0.0
         self.time_since_plot = 0.0
 
         self.assign_colors()
+        self.set_env_force() #Let all the UAVs know the environmental force
         self.set_paths(self.plan.get_initial_paths(self))
 
 
@@ -213,6 +216,13 @@ class Environment:
         interesting_cols = all_df[['Name', 'Precision', 'Recall', 'F1', 'Energy_Used', 'PCT_Covered', 'PCT_Spotted']]
         print(interesting_cols)
         interesting_cols.to_csv(self.stats_out_path, index=False)
+
+    '''
+    Tell all the UAVs what the environmental force is
+    '''
+    def set_env_force(self):
+        for uav in self.uavs:
+            uav.set_env_force(self.env_force)
 
     '''
     Assign a color to each UAV

@@ -102,7 +102,8 @@ def spawn_sharks(n, poly, speed=1):
 '''
 Create a video from the generated plots
 Assumes that lexographically sorting filenames in the
-    directory is the correct sequency for the video
+    directory is the correct seq
+    ency for the video
 '''
 def create_video(video_name, image_dir, extention='png'):
     if not video_name.endswith('.mp4'):

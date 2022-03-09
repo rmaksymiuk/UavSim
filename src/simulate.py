@@ -5,7 +5,7 @@ from shapely.geometry import Point, Polygon, LineString
 from UAV import UAV
 from Environment import Environment
 from Shark import Shark
-from Change_Alt_Plan import Change_Alt_Plan
+from ChangeAlt_Plan import Change_Alt_Plan
 from Basic_Plan import Basic_Plan
 import util
 

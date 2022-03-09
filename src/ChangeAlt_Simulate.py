@@ -4,7 +4,7 @@ from shapely.geometry import Point, Polygon, LineString
 from UAV import UAV
 from Environment import Environment
 from Shark import Shark
-from Change_Alt_Plan import Change_Alt_Plan
+from ChangeAlt_Plan import Change_Alt_Plan
 from Basic_Plan import Basic_Plan
 import util
 
@@ -43,7 +43,7 @@ def sim():
         'base_pos': control_pos,
         'plan': Change_Alt_Plan({}),
 
-        'timestep': 0.01 # If you are plotting/creating a vid timestep should be < 1 / fps otherwise, 0.1 is okay.
+        'timestep': 0.1 # If you are plotting/creating a vid timestep should be < 1 / fps otherwise, 0.1 is okay.
     }
 
     env = Environment(env_config)

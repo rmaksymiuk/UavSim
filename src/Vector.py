@@ -119,6 +119,7 @@ class Vec3d:
         self.z = z
         self.vec[2] = z
 
+
     '''
     Initialize a 3d vector from a np array of len 3
     '''
@@ -167,6 +168,17 @@ class Vec3d:
         return Vec3d().from_vec(rot_arr @ self.vec)
 
     '''
+    Rotate a vector about the z axis only
+    '''
+    def rotate_z(self, theta):
+        rot_arr = np.array(
+                [[np.cos(theta), -1 * np.sin(theta), 0],
+                    [np.sin(theta), np.cos(theta), 0],
+                    [0, 0, 1]]
+        )
+        return Vec3d().from_vec(rot_arr @ self.vec)
+
+    '''
     Convert the 3d vector into a 2d point object. Only use the
     first two components of the vector
     '''
@@ -197,6 +209,13 @@ class Vec3d:
         if z_comp.y < 0:
             z_ang = 2 * np.pi - z_ang
         return y_ang, z_ang
+
+    '''
+    Project a vector onto another vector
+    '''
+    def project_onto(self, onto):
+        return onto.scale((self.vec @ onto.vec) / (onto.vec @ onto.vec))
+        
 
     '''
     Convert the 3d vector into a shapely Point object
