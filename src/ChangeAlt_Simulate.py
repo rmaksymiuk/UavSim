@@ -1,4 +1,3 @@
-## This File is where the simulations are actually run from
 import sys
 from Vector import Vec2d, Vec3d
 from shapely.geometry import Point, Polygon, LineString
@@ -42,7 +41,7 @@ def sim():
         'sharks': util.spawn_sharks(3, env_boundary),
         'boundary': env_boundary,
         'base_pos': control_pos,
-        'plan': Basic_Plan({}),
+        'plan': Change_Alt_Plan({}),
 
         'timestep': 0.01 # If you are plotting/creating a vid timestep should be < 1 / fps otherwise, 0.1 is okay.
     }
