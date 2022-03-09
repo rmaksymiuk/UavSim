@@ -45,7 +45,7 @@ def sim():
         'boundary': env_boundary,
         'base_pos': control_pos,
         'plan': Cell_Plan({}),
-        'timestep': 0.01  # If you are plotting/creating a vid timestep should be < 1 / fps otherwise, 0.1 is okay.
+        'timestep': 0.1  # If you are plotting/creating a vid timestep should be < 1 / fps otherwise, 0.1 is okay.
     }
     sharks_spotted = 0
     env = Environment(env_config)
