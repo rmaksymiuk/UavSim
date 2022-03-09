@@ -61,7 +61,7 @@ class Environment:
         # List of tuples containing (uav, spotted shark location)
         uav_spotted = [] 
         for uav in self.uavs:
-            spotted = uav.step(self.timestep, self.total_time, self.sharks)
+            spotted = uav.step(self.timestep, self.total_time, self.sharks, self.base_pos)
             if len(spotted) > 0:
                 uav_spotted.append((uav, spotted))
         if len(uav_spotted) > 0:

@@ -33,15 +33,15 @@ def sim():
 
     env_boundary = Polygon([
         (0, 0),
-        (1000, 0),
-        (1000, 1000),
-        (0, 1000),
+        (500, 0),
+        (500, 500),
+        (0, 500),
         (0, 0)
     ])
 
     env_config = {
         'uavs': [UAV(uav1_config), UAV(uav2_config), UAV(uav3_config)],
-        'sharks': util.spawn_sharks(10, env_boundary),
+        'sharks': util.spawn_sharks(5, env_boundary),
         'boundary': env_boundary,
         'base_pos': control_pos,
         'plan': Cell_Plan({}),

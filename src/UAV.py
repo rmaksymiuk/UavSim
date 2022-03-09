@@ -28,6 +28,7 @@ class UAV:
         self.fps = util.set_or_default(config, 'fps', 30)
         self.max_dist_drone = util.set_or_default(config, 'max_dist_drone', None)
         self.max_dist_base = util.set_or_default(config, 'max_dist_base', None)
+        self.mass = util.set_or_default(config, 'mass', 2)
         self.role = util.set_or_default(config, 'role', None)
         # Angles should be provided in radians
         self.lat_angle = util.set_or_default(config, 'lat_angle', 0.785) # associated with x #radians
@@ -41,12 +42,12 @@ class UAV:
         self.already_seen_buffer = util.set_or_default(config, 'seen_buffer', 20)
 
         # Defining Thrust
-        self.f_thrust = util.set_or_default(config, 'f_thrust', 20)
-        self.b_thrust = util.set_or_default(config, 'b_thrust', 0)
-        self.u_thrust = util.set_or_default(config, 'u_thrust', 20)
+        self.f_thrust = util.set_or_default(config, 'f_thrust', 40)
+        self.b_thrust = util.set_or_default(config, 'b_thrust', 5)
+        self.u_thrust = util.set_or_default(config, 'u_thrust', 40)
         self.d_thrust = util.set_or_default(config, 'd_thrust', 0)
-        self.l_thrust = util.set_or_default(config, 'l_thrust', 2)
-        self.r_thrust = util.set_or_default(config, 'r_thrust', 2)
+        self.l_thrust = util.set_or_default(config, 'l_thrust', 40)
+        self.r_thrust = util.set_or_default(config, 'r_thrust', 40)
 
         self.env_force= None # Set by environment
         self.color = None # Set by environment
@@ -75,9 +76,6 @@ class UAV:
             self.path = None
             return
         self.path = path
-        new_point = self.path.points[0]
-        new_speed = self.path.speeds[0]
-        self.update_vel(self.pos, new_point, new_speed)
 
 
     '''
@@ -117,10 +115,12 @@ class UAV:
         - timestep is the amount of time to advance the UAV state
         - total_time is the amount of time since the start of the simulation
         - sharks is a list of shark objects representing the sharks in the environment
+        - control_pos is the position of the control station
     '''
-    def step(self, timestep, total_time, sharks):
-        self.naive_adjust_accel()
-        self.take_vel_step(timestep)
+    def step(self, timestep, total_time, sharks, control_pos):
+        tot_force = self.env_force + self.calc_drag()
+        self.naive_adjust_accel(tot_force)
+        self.take_vel_step(tot_force, timestep)
         new_pos = self.pos + self.velocity.scale(timestep)
 
         # If the UAV is pursuing a path
@@ -135,20 +135,12 @@ class UAV:
                 new_pos = self.path.points.pop(0)
                 self.path.speeds.pop(0)
                 self.history.append(new_pos)
-
-
-                # If the UAV still has tasks
-                if not self.path.empty():
-                    new_speed = self.path.speeds[0]
-                    self.update_vel(new_pos, self.path.points[0], new_speed)
-
-                # If the UAV has completed all tasks
-                else:
-                    self.update_vel(new_pos, new_pos, 0)
+                if self.path.empty():
                     self.path = None
 
+        if not self.pos.to_point().buffer(1).intersects(control_pos.to_point()):
+            self.energy_used += (timestep * self.speed_cost(self.thrust))
         self.pos = new_pos
-        self.energy_used += (timestep * self.speed_cost(self.thrust))
         self.time_since_frame += timestep
 
         spotted_at = []
@@ -181,7 +173,7 @@ class UAV:
     Takes a step in velocity while checking if the simulation passed
     the velocity it was aiming for
     '''
-    def take_vel_step(self, timestep):
+    def take_vel_step(self, tot_force, timestep):
         if not self.path:
             desired_vel = Vec3d()
         else:
@@ -189,7 +181,7 @@ class UAV:
             desired_vel = point_diff.unit().scale(self.path.speeds[0])
 
         cur_vel = self.velocity
-        new_vel = self.velocity + (self.env_force + self.thrust).scale(timestep)
+        new_vel = self.velocity + (tot_force + self.thrust).scale(timestep / self.mass)
         if LineString([cur_vel.to_point(), new_vel.to_point()]).buffer(1).intersects(desired_vel.to_point()):
             self.velocity = desired_vel
         else:
@@ -201,7 +193,7 @@ class UAV:
     Naively adjusts the accelleration by applying maximum thrust to align it 
     with the next position vector
     '''
-    def naive_adjust_accel(self):
+    def naive_adjust_accel(self, tot_force):
         if not self.path:
             desired_vel = Vec3d()
         else:
@@ -211,23 +203,26 @@ class UAV:
         pursue_diff = desired_vel - self.velocity
         thrust_vecs = self.get_thrust_vectors()
 
-        env_contrib = self.env_force.project_onto(pursue_diff)
+        env_contrib = tot_force.project_onto(pursue_diff)
         if env_contrib.vec @ pursue_diff.vec > 0:
-            correct_env = self.env_force - env_contrib
+            correct_env = tot_force - env_contrib
         else:
-            correct_env = self.env_force
+            correct_env = tot_force 
 
         self.thrust = Vec3d()
         for tv in thrust_vecs:
             # First see if we should contribute thrust to balancing environmental forces
             if correct_env.mag() > 0:
                 env_dir = tv.project_onto(correct_env)
-                if env_dir.vec @ correct_env.vec > 1:
+                if env_dir.vec @ correct_env.vec < 1:
                     if env_dir.mag() > correct_env.mag():
-                        remain_tv = tv - env_dir.unit().scale(correct_env.mag())
+                        part_contrib = env_dir.unit().scale(correct_env.mag())
+                        self.thrust += part_contrib
+                        remain_tv = tv - part_contrib 
                         correct_env = Vec3d()
                     else:
-                        correct_env = correct_env - env_dir
+                        correct_env = correct_env + env_dir
+                        self.thrust += env_dir
                         remain_tv = tv - env_dir
                 else:
                     remain_tv = tv
@@ -238,7 +233,7 @@ class UAV:
             if pursue_diff.mag() > 0:
                 for_thrust = remain_tv.project_onto(pursue_diff)
                 if for_thrust.vec @ pursue_diff.vec > 0:
-                    self.thrust = self.thrust + for_thrust
+                    self.thrust += for_thrust
 
     '''
     Gets the possible thrust vectors for the uav
@@ -267,17 +262,6 @@ class UAV:
             return Vec3d()
         d_force = 0.5 * 1.225 * (v_mag ** 2) * 1.2 * self.cs_area
         return self.velocity.unit().scale(-1 * d_force)
-
-    '''
-    Updates the velocity and direction of the current drone
-    '''
-    def update_vel(self, cur_pos, new_pos, speed):
-        diff = new_pos - cur_pos
-        if diff.is_zero():
-            self.velocity = Vec3d()
-        else:
-            self.velocity = diff.unit().scale(speed)
-            self.dir = self.velocity.unit()
 
     '''
     Plot the progress of this UAV on the given axis

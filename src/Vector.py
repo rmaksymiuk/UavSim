@@ -41,6 +41,12 @@ class Vec2d:
         return self.from_vec(result)
 
     '''
+    Allow ourselves to compare vectors
+    '''
+    def __eq__(self, other):
+        return self.vec == other.vec
+
+    '''
     Scale each vector component by a scaler value
     '''
     def scale(self, scaler):
@@ -89,7 +95,7 @@ class Vec2d:
     Generates a random vector
     '''
     def gen_random(self):
-        return Vec2d(np.random.random(), np.random.random())
+        return Vec2d(np.random.random() * 2 - 1, np.random.random() * 2 - 1)
 
     '''
     Convert the 2D vector into a 3d vector
@@ -127,6 +133,12 @@ class Vec3d:
         if len(arr) != 3:
             raise ValueError("Np Arr input must be of len 3")
         return Vec3d(arr[0], arr[1], arr[2])
+
+    '''
+    Allow ourselves to compare vectors
+    '''
+    def __eq__(self, other):
+        return self.vec == other.vec
 
     '''
     Allow ourselves to add vectors
@@ -255,5 +267,7 @@ class Vec3d:
     Generates a random vector
     '''
     def gen_random(self):
-        return Vec3d(np.random.random(), np.random.random(), np.random.random())
+        return Vec3d(np.random.random() * 2 - 1, 
+                np.random.random() * 2 - 1, 
+                np.random.random() * 2 - 1)
 

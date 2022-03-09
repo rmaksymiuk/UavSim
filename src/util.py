@@ -95,7 +95,7 @@ def spawn_sharks(n, poly, speed=1):
         sharks.append(Shark({
             'name': 'Shark_' + str(i), 
             'init_pos': start_points[i].to_Vec3d(), 
-            'init_vel': rand_vel.unit().scale(speed)}))
+            'init_vel': rand_vel.scale(speed)}))
     return sharks
 
 

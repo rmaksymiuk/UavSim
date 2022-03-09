@@ -31,9 +31,9 @@ class Shark:
     '''
     def plot_shark(self, ax):
         if len(self.spotted_by) > 0:
-            ax.scatter([self.pos.x], [self.pos.y], [self.pos.z], color='green', marker='^', label="Spotted Shark")
+            ax.scatter([self.pos.x], [self.pos.y], [self.pos.z], color='green', marker='^')
         else:
-            ax.scatter([self.pos.x], [self.pos.y], [self.pos.z], color='red', marker='^', label="Not Spotted Shark")
+            ax.scatter([self.pos.x], [self.pos.y], [self.pos.z], color='red', marker='^')
 
 
     '''
