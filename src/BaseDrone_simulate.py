@@ -47,20 +47,12 @@ def sim():
         'plan': Cell_Plan({}),
         'timestep': 0.01  # If you are plotting/creating a vid timestep should be < 1 / fps otherwise, 0.1 is okay.
     }
-    sharks_spotted = 0
+
     env = Environment(env_config)
+
     # Video created if plotting=True, else no video
     env.simulate(plotting=True)
 
-    ##env.shark_spotted(detected_pos.to_point())
-    # print(env.shark_spotted)
-
-    print("Number Sharks: ", env.number_sharks)
-
-
-#   print("Counter :", uav.counter)
-
-##print(env.uavs.spotted_at1)
 
 
 if __name__ == "__main__":
