@@ -3,7 +3,7 @@ from Vector import Vec2d, Vec3d
 from shapely.geometry import Point, Polygon, LineString
 from UAV import UAV
 from Environment import Environment
-from Shark import Shark
+from Env_Object import Env_Object
 from ChangeAlt_Plan import Change_Alt_Plan
 from Basic_Plan import Basic_Plan
 import util
@@ -38,7 +38,7 @@ def sim():
     #Environment configured with Changing Altitude Plan
     env_config = {
         'uavs': [UAV(uav1_config), UAV(uav2_config)],
-        'sharks': util.spawn_sharks(3, env_boundary),
+        'objects': util.spawn_objects(3, env_boundary),
         'boundary': env_boundary,
         'base_pos': control_pos,
         'plan': Change_Alt_Plan({}),

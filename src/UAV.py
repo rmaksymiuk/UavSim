@@ -16,6 +16,7 @@ class UAV:
         self.pos =  util.set_or_err(config, 'init_pos')
         self.init_energy = util.set_or_err(config, 'init_energy')
         self.name = util.set_or_err(config, 'name')
+        self.focus = util.set_or_err(config, 'focus')
 
         self.set_path(util.set_or_default(config, 'init_path', None))
         self.velocity = util.set_or_default(config, 'init_vel', Vec3d())
@@ -33,11 +34,10 @@ class UAV:
         # Angles should be provided in radians
         self.lat_angle = util.set_or_default(config, 'lat_angle', 0.785) # associated with x #radians
         self.horiz_angle = util.set_or_default(config, 'horiz_angle', 0.785) # associated with #radians 
-        self.max_rot_vel = util.set_or_default(config, 'max_rot_velocity', 0.174) # radians
         self.cs_area = util.set_or_default(config, 'cs_area', 0.1) # used for drag calculation
         self.speed_cost = util.set_or_default(config, 'speed_cost', default_speed_cost)
-        self.shark_detected = util.set_or_default(config, 'shark_detected', default_shark_detected)
-        # If a uav spots a shark within this buffer of places where it already thinks it saw a shark,
+        self.object_detected = util.set_or_default(config, 'object_detected', default_object_detected)
+        # If a uav spots an object within this buffer of places where it already thinks it saw a object,
         # the spotting will not be reported to the Planner class
         self.already_seen_buffer = util.set_or_default(config, 'seen_buffer', 20)
 
@@ -56,12 +56,12 @@ class UAV:
         self.time_since_frame = 0.0
         self.last_plot_time = 0.0
         self.area_covered = Polygon([]) # Using Shapely to manage area covered
-        self.spotted = Polygon([]) # If a UAV spots a shark, it won't report it if it has already seen it
+        self.spotted = Polygon([]) # If a UAV spots an object, it won't report it if it has already seen it
 
         self.history = [] # Contains a list of points the UAV has traveled to 
-        self.TPs = [] # Contains [Polygon, time] tuples where a UAV spotted a shark
-        self.FNs = [] # Contains [Polygon, time] typles where a UAV failed to spot a shark
-        self.FPs = [] # Contains [Polygon, time] tuples where a UAV spotted a nonexistant shark
+        self.TPs = [] # Contains [Polygon, time] tuples where a UAV spotted a object
+        self.FNs = [] # Contains [Polygon, time] typles where a UAV failed to spot a object
+        self.FPs = [] # Contains [Polygon, time] tuples where a UAV spotted an object that was not an object of interest
 
 
     '''
@@ -114,10 +114,10 @@ class UAV:
     Steps the UAV through the environment 
         - timestep is the amount of time to advance the UAV state
         - total_time is the amount of time since the start of the simulation
-        - sharks is a list of shark objects representing the sharks in the environment
+        - env_objects is a list of objects representing the objects in the environment
         - control_pos is the position of the control station
     '''
-    def step(self, timestep, total_time, sharks, control_pos):
+    def step(self, timestep, total_time, env_objects, control_pos):
         tot_force = self.env_force + self.calc_drag()
         self.naive_adjust_accel(tot_force)
         self.take_vel_step(tot_force, timestep)
@@ -149,10 +149,10 @@ class UAV:
             self.time_since_frame = 0
             frame = self.get_frame()
             self.area_covered = unary_union([self.area_covered, frame])
-            for shark in sharks:
-                detect_type, detected_pos = self.shark_detected(self, shark)
+            for env_object in env_objects:
+                detect_type, detected_pos = self.object_detected(self, env_object)
                 if detect_type == 'TP':
-                    shark.spotted(self, total_time)
+                    env_object.spotted(self, total_time) # Only say the object was spotted if it is the obj of focus
                     self.TPs.append((frame, total_time))
                     detected_as_point = detected_pos.to_point()
                     if not self.spotted.contains(detected_as_point):
@@ -161,7 +161,6 @@ class UAV:
                 elif detect_type =='FP':
                     detected_as_point = detected_pos.to_point()
                     self.FPs.append((frame, total_time))
-                    spotted_at.append(detected_pos)
                     if not self.spotted.contains(detected_as_point):
                         self.spotted = unary_union([self.spotted, detected_as_point.buffer(self.already_seen_buffer)])
                         spotted_at.append(detected_pos)
@@ -174,11 +173,11 @@ class UAV:
     the velocity it was aiming for
     '''
     def take_vel_step(self, tot_force, timestep):
-        if not self.path:
-            desired_vel = Vec3d()
-        else:
+        desired_vel = Vec3d()
+        if self.path:
             point_diff = self.path.points[0] - self.pos
-            desired_vel = point_diff.unit().scale(self.path.speeds[0])
+            if point_diff.mag() > 0:
+                desired_vel = point_diff.unit().scale(self.path.speeds[0])
 
         cur_vel = self.velocity
         new_vel = self.velocity + (tot_force + self.thrust).scale(timestep / self.mass)
@@ -194,11 +193,11 @@ class UAV:
     with the next position vector
     '''
     def naive_adjust_accel(self, tot_force):
-        if not self.path:
-            desired_vel = Vec3d()
-        else:
+        desired_vel = Vec3d()
+        if self.path: 
             point_diff = self.path.points[0] - self.pos
-            desired_vel = point_diff.unit().scale(self.path.speeds[0])
+            if point_diff.mag() > 0:
+                desired_vel = point_diff.unit().scale(self.path.speeds[0])
 
         pursue_diff = desired_vel - self.velocity
         thrust_vecs = self.get_thrust_vectors()
@@ -214,7 +213,7 @@ class UAV:
             # First see if we should contribute thrust to balancing environmental forces
             if correct_env.mag() > 0:
                 env_dir = tv.project_onto(correct_env)
-                if env_dir.vec @ correct_env.vec < 1:
+                if env_dir.vec @ correct_env.vec < 0:
                     if env_dir.mag() > correct_env.mag():
                         part_contrib = env_dir.unit().scale(correct_env.mag())
                         self.thrust += part_contrib
@@ -310,8 +309,8 @@ class UAV:
         TP = len(self.TPs)
         FP = len(self.FPs)
         FN = len(self.FNs)
-        index = ['Name', 'TP', 'FP', 'FN', 'Energy_Used', 'Area_Covered']
-        return pd.Series([self.name, TP, FP, FN,  self.energy_used, self.area_covered], index=index)
+        index = ['Name', 'Focus', 'TP', 'FP', 'FN', 'Energy_Used', 'Area_Covered']
+        return pd.Series([self.name, self.focus, TP, FP, FN,  self.energy_used, self.area_covered], index=index)
 
 
     '''
@@ -353,61 +352,54 @@ def old_default_speed_cost(velocity):
 Object detection function to be used if none is supplied
 Params:
     - uav: Uav object
-    - sharks: List of shark objects from the environment
+    - env_object: Object from the environment  
 
-Returns the location of the shark if it was spotted in the frame
-If there is a "false positive" return a random location in the frame
-
+Returns the location of the object if it was spotted in the frame
 '''
-def default_shark_detected(uav, shark):
-    true_pos_optimal = 0.9 # Performance in an ideal environemnt
-    false_pos_optimal = 0.001 # False postive rate in an ideal environment
+def default_object_detected(uav, env_object):
+    true_pos_optimal = 0.95 # Performance in an ideal environemnt
 
     cur_frame = uav.get_frame()
     corner = list(cur_frame.exterior.coords)[0]
     max_angle = util.get_angle_to(uav.pos, Vec2d(corner[0], corner[1]))
 
-    if cur_frame.contains(shark.pos.to_point()):
-        ## Shark is in frame
-        shark_angle = util.get_angle_to(uav.pos, shark.pos)
-        ## Calculate the probability that we see the shark
-        angle_weight = 0.2
-        drone_velocity_weight = 0.2
-        drone_height_weight = 0.2
-        shark_depth_weight = 0.4
+    is_focus = env_object.type == uav.focus
+    performance_multiplyer = env_object.get_multiplier(is_focus)
+    actual_performance = true_pos_optimal * performance_multiplyer
 
-        angle_score = shark_angle / max_angle
+    if cur_frame.contains(env_object.pos.to_point()):
+        ## Object is in frame
+        object_angle = util.get_angle_to(uav.pos, env_object.pos)
+        ## Calculate the probability that we see the object
+        angle_weight = 0.1
+        drone_velocity_weight = 0.2
+        drone_height_weight = 0.5
+        object_depth_weight = 0.1
+
+        angle_score = object_angle / max_angle
         drone_velocity_score = util.get_sig(bal_point=30, scaling_val=-5)(uav.velocity.mag())
         drone_height_score = util.get_sig(bal_point=30, scaling_val=-5)(uav.pos.z)
-        shark_depth_score = util.get_sig(bal_point= -5, scaling_val=5)(shark.pos.z)
+        object_depth_score = util.get_sig(bal_point= -5, scaling_val=5)(env_object.pos.z)
 
         prob = 0
         prob += angle_weight * angle_score
         prob += drone_velocity_weight * drone_velocity_score
         prob += drone_height_weight * drone_height_score 
-        prob += shark_depth_weight * shark_depth_score
-        prob *= true_pos_optimal
+        prob += object_depth_weight * object_depth_score
 
-        detected = np.random.choice([0, 1], size=1, p=[1 - prob, prob])[0]
-        return ('TP', shark.pos.to_Vec2d()) if detected == 1 else ('FN', None)
-
-    else:
-        ## Shark is not in the frame
-        drone_velocity_weight = 0.5
-        drone_height_weight = 0.5
-        drone_velocity_score = util.get_sig(bal_point=30, scaling_val=-5)(uav.velocity.mag())
-        drone_height_score = util.get_sig(bal_point=30, scaling_val=-5)(uav.pos.z)
-
-        prob = 0
-        prob += drone_velocity_weight * drone_velocity_score
-        prob += drone_height_weight * drone_height_score 
-        
-        prob = 1 - (1 - false_pos_optimal) * prob
-        detected = np.random.choice([0, 1], size=1, p=[1 - prob, prob])[0]
-
-        return ('TN', None) # For now we wont worry about false positives
-
-        if detected == 1:
-            return ('FP', util.gen_random(cur_frame, n_points=1)[0])
+        # A good prob score should lead to a decreased likelyhood of false positives
+        if is_focus:
+            prob *= actual_performance
         else:
-            return ('TN', None)
+            prob = (1 - prob) * actual_performance
+
+
+        detected = np.random.choice([0, 1], size=1, p=[1 - prob, prob])[0]
+        if detected == 1:
+            if is_focus:
+                return ('TP', env_object.pos.to_Vec2d())
+            return ('FP', env_object.pos.to_Vec2d())
+        if is_focus:
+            return ('FN', None)
+    return ('TN', None) 
+

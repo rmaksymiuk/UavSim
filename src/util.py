@@ -2,7 +2,7 @@
 from shapely.geometry import Point, Polygon
 from shapely.ops import unary_union
 from Vector import Vec2d, Vec3d
-from Shark import Shark
+from Env_Object import Env_Object
 import numpy as np
 import glob, os, cv2
 
@@ -84,19 +84,23 @@ def convert_3d(poly, z=0):
 
 
 '''
-Randomly spawn sharks in a given environment going a certain speed
+Randomly spawn objects in a given environment going a certain speed
+Assumes that velocities can only have a direction in the x, y plane. No z
 '''
-def spawn_sharks(n, poly, speed=1):
+def spawn_objects(n, otype, poly, focus_perf=1, non_focus_perf=0.4, speed=1):
     start_points = gen_random(poly, n)
-    sharks = []
+    env_objects = []
     for i in range(n):
         rand_vel = Vec3d().gen_random()
         rand_vel.set_z(0)
-        sharks.append(Shark({
-            'name': 'Shark_' + str(i), 
+        env_objects.append(Env_Object({
+            'name': 'Object_' + str(i), 
+            'type': otype,
             'init_pos': start_points[i].to_Vec3d(), 
+            'focus_performance': focus_perf,
+            'non_focus_performance': non_focus_perf,
             'init_vel': rand_vel.scale(speed)}))
-    return sharks
+    return env_objects
 
 
 '''

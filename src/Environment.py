@@ -9,6 +9,7 @@ from shapely.ops import unary_union
 from Vector import Vec3d
 import os
 import shutil
+import datetime
 
 class Environment:
     '''
@@ -25,7 +26,7 @@ class Environment:
 
         # configs
         self.uavs = util.set_or_err(config, 'uavs') # List[UAV]
-        self.sharks = util.set_or_err(config, 'sharks') # List[Shark]
+        self.objects = util.set_or_err(config, 'objects') # List[Env_Object]
         self.boundary = util.set_or_err(config, 'boundary') # Polygon
         self.base_pos = util.set_or_err(config, 'base_pos') # Vec3d
 
@@ -42,6 +43,7 @@ class Environment:
         self.time_since_plot = 0.0
 
         self.assign_colors()
+        self.assign_markers()
         self.set_env_force() #Let all the UAVs know the environmental force
         self.set_paths(self.plan.get_initial_paths(self))
 
@@ -52,16 +54,16 @@ class Environment:
     it, otherwise, skip plotting
     '''
     def step(self, plotting):
-        # Step sharks through the simulation
+        # Step env_objects through the simulation
         self.total_time += self.timestep
         self.time_since_plot += self.timestep
-        for shark in self.sharks:
-            shark.step(self.timestep)
+        for env_object in self.objects:
+            env_object.step(self.timestep)
 
-        # List of tuples containing (uav, spotted shark location)
+        # List of tuples containing (uav, spotted object location)
         uav_spotted = [] 
         for uav in self.uavs:
-            spotted = uav.step(self.timestep, self.total_time, self.sharks, self.base_pos)
+            spotted = uav.step(self.timestep, self.total_time, self.objects, self.base_pos)
             if len(spotted) > 0:
                 uav_spotted.append((uav, spotted))
         if len(uav_spotted) > 0:
@@ -83,6 +85,7 @@ class Environment:
     comipled at the end. Otherwise, only stats are saved from the simulation
     '''
     def simulate(self, plotting=True):
+        start = datetime.datetime.now()
         if plotting:
             self.create_dirs()
             self.clear_fig_output()
@@ -101,6 +104,12 @@ class Environment:
             util.create_video(self.vid_out_path, self.fig_out_dir)
             self.clean_up()
         self.get_stats()
+        end = datetime.datetime.now()
+        clock_time = (end - start).total_seconds()
+        sps = self.total_time / clock_time / self.timestep
+        print('Clock Time:', clock_time, 'seconds')
+        print('Simulation Time:', self.total_time, 'seconds')
+        print('Steps Per Second:', sps, 'steps')
 
     '''
     Sets the paths of each uav in the environment according to the given tuples
@@ -153,8 +162,8 @@ class Environment:
         for uav in self.uavs:
             uav.plot_uav(ax, self.total_time)
 
-        for shark in self.sharks:
-            shark.plot_shark(ax)
+        for env_object in self.objects:
+            env_object.plot_object(ax)
 
         ax.legend()
         plt.savefig(os.path.join(self.fig_out_dir, '%08.03f' % self.total_time + '.png'))
@@ -165,30 +174,33 @@ class Environment:
     the result directory
     '''
     def get_stats(self):
+        # Get type df: Contains count of each type of object: Type, Count
+        count_df = self.get_type_df()
         # Build UAV df
-        # Name, TP, FP, FN, Energy Used, Area Covered
+        # Name, Focus, TP, FP, FN, Energy Used, Area Covered
         uav_dfs = []
         for uav in self.uavs:
             uav_dfs.append(uav.get_stats())
         uav_df = pd.DataFrame(uav_dfs)
+        uav_df = pd.merge(uav_df, count_df, how='inner', left_on='Focus', right_on='Type')
 
-        # Build Shark Df
-        # Shark, UAV
-        shark_dfs = []
-        for shark in self.sharks:
-            one_shark_df = shark.get_stats()
-            if len(one_shark_df) > 0:
-                # only add the shark df if the shark was seen
-                shark_dfs.append(one_shark_df)
-        total_sharks_spotted = len(shark_dfs)
-        if len(shark_dfs) > 0:
-            shark_df = pd.concat(shark_dfs, axis=0)
-            sharks_by_uav = shark_df['UAV'].value_counts()
-            sharks_by_uav.name = 'Num_Sharks'
-            uav_df = pd.merge(uav_df, sharks_by_uav, left_on='Name', right_index=True, how='left')
-            uav_df.loc[pd.isna(uav_df['Num_Sharks']), 'Num_Sharks'] = 0
+        # Build Object Df
+        # Object, UAV
+        object_dfs = []
+        for env_object in self.objects:
+            one_object_df = env_object.get_stats()
+            if len(one_object_df) > 0:
+                # only add the object df if the object was seen
+                object_dfs.append(one_object_df)
+        total_objects_spotted = len(object_dfs)
+        if len(object_dfs) > 0:
+            object_df = pd.concat(object_dfs, axis=0)
+            objects_by_uav = object_df['UAV'].value_counts()
+            objects_by_uav.name = 'Num_Objects'
+            uav_df = pd.merge(uav_df, objects_by_uav, left_on='Name', right_index=True, how='left')
+            uav_df.loc[pd.isna(uav_df['Num_Objects']), 'Num_Objects'] = 0
         else:
-            uav_df['Num_Sharks'] = 0
+            uav_df['Num_Objects'] = 0
             
 
         # Calculate totals
@@ -199,7 +211,8 @@ class Environment:
             'Energy_Used': 'sum',
             'Area_Covered': util.list_union})
         total_values['Name'] = 'Total'
-        total_values['Num_Sharks'] = total_sharks_spotted
+        total_values['Num_Objects'] = total_objects_spotted
+        total_values['Count'] = count_df.loc[count_df['Type'].isin(list(uav_df['Focus'].unique())), 'Count'].sum()
 
         # Merge total with UAVs
         all_df = pd.concat([uav_df, total_values.to_frame().transpose()], axis=0).reset_index()
@@ -210,8 +223,8 @@ class Environment:
         all_df['Precision'] = all_df['TP'] / (all_df['TP'] + all_df['FP'])
         all_df['Recall'] = all_df['TP'] / (all_df['TP'] + all_df['FN'])
         all_df['F1'] = 2 * all_df['Precision'] * all_df['Recall'] / (all_df['Precision'] + all_df['Recall'])
-        all_df['PCT_Covered'] = all_df['Area_Covered'].apply(lambda x: x.area) / self.boundary.area
-        all_df['PCT_Spotted'] = all_df['Num_Sharks'] / len(self.sharks)
+        all_df['PCT_Covered'] = all_df['Area_Covered'].apply(lambda x: x.intersection(self.boundary).area) / self.boundary.area
+        all_df['PCT_Spotted'] = all_df['Num_Objects'] / all_df['Count']
 
         interesting_cols = all_df[['Name', 'Precision', 'Recall', 'F1', 'Energy_Used', 'PCT_Covered', 'PCT_Spotted']]
         print(interesting_cols)
@@ -233,6 +246,33 @@ class Environment:
         for i, uav in enumerate(self.uavs):
             uav.set_color(colors[i % len(colors)])
 
+    '''
+    Assign a marker to each object. Also tell each object if they should include a legend.
+    Only the first object of each class should include a legend
+    '''
+    def assign_markers(self):
+        types = {}
+        markers = ['2', 's', 'P', '*', 'D']
+        cur_marker = 0
+        for o in self.objects:
+            if o.type not in types:
+                types[o.type] = markers[cur_marker % len(markers)]
+                cur_marker += 1
+                o.assign_marker(types[o.type], first=True)
+            else:
+                o.assign_marker(types[o.type], first=False)
+
+    '''
+    Creates a dataframe containing the type of an object and the count of each
+    type of object
+    '''
+    def get_type_df(self):
+        types = {}
+        for o in self.objects:
+            if o.type not in types:
+                types[o.type] = 0
+            types[o.type] += 1
+        return pd.DataFrame(types.items(), columns=['Type', 'Count'])
 
     '''
     Removes all images from the figure output directory
