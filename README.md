@@ -1,5 +1,7 @@
 # CSC480_Shark_Spotting_Project
 
+![Change Altitude Plan](https://github.com/rmaksymiuk/UavSim/blob/main/demos/ca_sim.mp4)
+
 ### Creating Conda Environment
 You will need anaconda or miniconda to create the environment needed to run the simulator. See how to install them [here](https://docs.conda.io/en/latest/miniconda.html)
 To create the environment you need to run the software, run the following line.
