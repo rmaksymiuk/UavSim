@@ -1,4 +1,4 @@
-# CSC480_Shark_Spotting_Project
+# UavSim
 
 ![Change Altitude Plan](https://github.com/rmaksymiuk/UavSim/blob/main/demos/UavSim.gif)
 
@@ -29,4 +29,6 @@ speed_cost is an attribute configurable through the UAV constructor.
 ## Defining new Default Shark Detected
 To define a new shark_detected behavior for the UAV, use the default_shark_detected method in UAV.py as an example.
 shark_detected is an attribute configurable through the UAV constructor.
+
+### Project Report ![Here](https://drive.google.com/file/d/1jYA3IE0tc6kyy_FLYg44cDrD8UHDKQOY/view?usp=sharing)
 
