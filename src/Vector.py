@@ -80,6 +80,12 @@ class Vec2d:
         return self.from_vec(self.vec / self.mag())
 
     '''
+    Project a vector onto another vector
+    '''
+    def project_onto(self, onto):
+        return onto.scale((self.vec @ onto.vec) / (onto.vec @ onto.vec))
+
+    '''
     Find the angle between two vectors
     '''
     def angle(self, other):
@@ -90,6 +96,17 @@ class Vec2d:
     '''
     def rotate_90(self):
         return Vec2d().from_vec(self.vec @ np.array([[0, -1], [1, 0]]))
+
+    '''
+    Rotate a vector by an arbitrary angle about the imaginary 
+    z axis
+    '''
+    def rotate(self, theta):
+        rot_arr = np.array(
+                [[np.cos(theta), -1 * np.sin(theta)],
+                    [np.sin(theta), np.cos(theta)]]
+        )
+        return Vec2d().from_vec(rot_arr @ self.vec)
 
     '''
     Generates a random vector

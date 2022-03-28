@@ -136,6 +136,19 @@ def list_union(pgons):
         accum = unary_union([accum, pgon])
     return accum
 
+'''
+Given two points, and two velocities. Find the intersection of the lines.
+Assume the points are two dimensional
+'''
+def intersection(p1, v1, p2, v2):
+    l_mat = np.concatenate((1 / v1.vec)[None, :], (1 / v2.vec)[None, :])
+    r1 = p1.vec / v1.vec
+    r2 = p2.vec / v2.vec
+    r_mat = np.concatenate(r1[1] - r1[0], r2[1] - r2[0])
+    result = np.linalg.solve(l_mat, r_mat)
+    return Vec2d(result[0], result[1])
+
+
 
 
 
