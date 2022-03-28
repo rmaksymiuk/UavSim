@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from shapely.ops import unary_union
 from Vector import Vec3d
+from Wind import Wind
 import os
 import shutil
 import datetime
@@ -30,6 +31,7 @@ class Environment:
         self.boundary = util.set_or_err(config, 'boundary') # Polygon
         self.base_pos = util.set_or_err(config, 'base_pos') # Vec3d
 
+        self.wind_regions = util.set_or_default(config, 'wind_regions', None)
         self.timestep = util.set_or_default(config, 'timestep', 0.01)
         self.plot_every = util.set_or_default(config, 'plotstep', 0.5)
         self.mission_time = util.set_or_default(config, 'mission_time', None)
@@ -42,6 +44,7 @@ class Environment:
         self.total_time = 0.0
         self.time_since_plot = 0.0
 
+        self.set_winds()
         self.assign_colors()
         self.assign_markers()
         self.set_env_force() #Let all the UAVs know the environmental force
@@ -54,6 +57,10 @@ class Environment:
     it, otherwise, skip plotting
     '''
     def step(self, plotting):
+        # Step Wind objects through simulation (for plotting)
+        for wind in self.winds:
+            wind.step(self.timestep)
+
         # Step env_objects through the simulation
         self.total_time += self.timestep
         self.time_since_plot += self.timestep
@@ -165,6 +172,9 @@ class Environment:
         for env_object in self.objects:
             env_object.plot_object(ax)
 
+        for wind in self.winds:
+            wind.plot(ax)
+
         ax.legend()
         plt.savefig(os.path.join(self.fig_out_dir, '%08.03f' % self.total_time + '.png'))
         plt.close()
@@ -229,6 +239,26 @@ class Environment:
         interesting_cols = all_df[['Name', 'Precision', 'Recall', 'F1', 'Energy_Used', 'PCT_Covered', 'PCT_Spotted']]
         print(interesting_cols)
         interesting_cols.to_csv(self.stats_out_path, index=False)
+
+
+
+    '''
+    Create Wind objects for the given wind regions
+    '''
+    def set_winds(self):
+        if self.wind_regions is None:
+            self.winds = []
+        if len(self.wind_regions) != 2:
+            print('Illegal Wind Specification. Proceeding Without wind')
+            self.winds = []
+        boundaries = self.wind_regions[0]
+        velocities = self.wind_regions[1]
+        if not len(boundaries) == len(velocities):
+            print('Illegal Wind Specification. Proceeding Without wind')
+            self.winds = []
+        for i, bound in enumerate(boundaries):
+            self.winds.append(Wind(bound, velocities[i], self.boundary))
+
 
     '''
     Tell all the UAVs what the environmental force is
