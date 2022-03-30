@@ -141,10 +141,13 @@ Given two points, and two velocities. Find the intersection of the lines.
 Assume the points are two dimensional
 '''
 def intersection(p1, v1, p2, v2):
-    l_mat = np.concatenate((1 / v1.vec)[None, :], (1 / v2.vec)[None, :])
-    r1 = p1.vec / v1.vec
-    r2 = p2.vec / v2.vec
-    r_mat = np.concatenate(r1[1] - r1[0], r2[1] - r2[0])
+    trans_mat = np.array([[0, 1], [-1, 0]])
+    l1 = v1.vec @ trans_mat
+    l2 = v2.vec @ trans_mat
+    l_mat = np.concatenate((l1[None, :], l2[None, :]))
+    r1 = l1 @ p1.vec
+    r2 = l2 @ p2.vec
+    r_mat = np.array([r1, r2])
     result = np.linalg.solve(l_mat, r_mat)
     return Vec2d(result[0], result[1])
 

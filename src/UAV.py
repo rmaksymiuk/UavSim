@@ -117,8 +117,8 @@ class UAV:
         - env_objects is a list of objects representing the objects in the environment
         - control_pos is the position of the control station
     '''
-    def step(self, timestep, total_time, env_objects, control_pos):
-        tot_force = self.env_force + self.calc_drag()
+    def step(self, timestep, total_time, env_objects, control_pos, winds):
+        tot_force = self.env_force + self.calc_drag(winds)
         self.naive_adjust_accel(tot_force)
         self.take_vel_step(tot_force, timestep)
         new_pos = self.pos + self.velocity.scale(timestep)
@@ -255,12 +255,15 @@ class UAV:
         - Force vector in the opposite direction of velocity
         - Assumes no wind
     '''
-    def calc_drag(self):
+    def calc_drag(self, winds):
         v_mag = self.velocity.mag()
-        if v_mag == 0:
-            return Vec3d()
-        d_force = 0.5 * 1.225 * (v_mag ** 2) * 1.2 * self.cs_area
-        return self.velocity.unit().scale(-1 * d_force)
+        a_vel = Vec3d()
+        for w in winds:
+            if w.boundary.covers(self.pos.to_point()):
+                a_vel += w.velocity
+        v_diff = a_vel - self.velocity
+        d_force = 0.5 * 1.225 * (v_diff.vec ** 2) * 1.2 * self.cs_area
+        return Vec3d(d_force[0], d_force[1], d_force[2]) 
 
     '''
     Plot the progress of this UAV on the given axis

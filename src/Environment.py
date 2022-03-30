@@ -70,7 +70,12 @@ class Environment:
         # List of tuples containing (uav, spotted object location)
         uav_spotted = [] 
         for uav in self.uavs:
-            spotted = uav.step(self.timestep, self.total_time, self.objects, self.base_pos)
+            spotted = uav.step(
+                    self.timestep, 
+                    self.total_time, 
+                    self.objects, 
+                    self.base_pos,
+                    self.winds)
             if len(spotted) > 0:
                 uav_spotted.append((uav, spotted))
         if len(uav_spotted) > 0:
@@ -246,18 +251,21 @@ class Environment:
     Create Wind objects for the given wind regions
     '''
     def set_winds(self):
+        self.winds = []
         if self.wind_regions is None:
-            self.winds = []
+            return
         if len(self.wind_regions) != 2:
             print('Illegal Wind Specification. Proceeding Without wind')
-            self.winds = []
+            return
         boundaries = self.wind_regions[0]
         velocities = self.wind_regions[1]
         if not len(boundaries) == len(velocities):
             print('Illegal Wind Specification. Proceeding Without wind')
-            self.winds = []
+            return
+        first = True
         for i, bound in enumerate(boundaries):
-            self.winds.append(Wind(bound, velocities[i], self.boundary))
+            self.winds.append(Wind(bound, velocities[i], self.boundary, first))
+            first=False
 
 
     '''
