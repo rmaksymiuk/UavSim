@@ -16,16 +16,30 @@ class Env_Object:
         self.focus_performance = util.set_or_default(config, 'focus_performance', 1)
         self.non_focus_performance = util.set_or_default(config, 'non_focus_performance', 0.4)
         self.velocity = util.set_or_default(config, 'init_vel', Vec3d())
+        self.visible_starts, self.visible_ends = util.set_or_default(config, 'visible', (None, None))
         self.spotted_by = [] # List of (UAV, time) tuples where the object was spotted 
 
         self.marker = None # assigned by environment
         self.first = False # assigned by environment
+
+        self.visible=True
+        self.total_time = 0.0
 
     '''
     Make the object take a step in time
     '''
     def step(self, time):
         self.pos = self.pos + self.velocity.scale(time)
+        self.total_time += time
+        if self.visible_starts is not None:
+            while len(self.visible_starts) > 0 and self.total_time > self.visible_ends[0]:
+                self.visible_starts = self.visible_starts[1:]
+                self.visible_ends = self.visible_ends[1:]
+            if len(self.visible_starts) == 0 or self.total_time < self.visible_starts[0]:
+                self.visible = False
+            else:
+                self.visible = True
+
 
     '''
     Tell the object it was spotted by a particular UAV at a particular time
@@ -37,6 +51,8 @@ class Env_Object:
     Plot the object. It is red if it hasn't been spotted, and green if it has
     '''
     def plot_object(self, ax):
+        if not self.visible:
+            return
         color = 'red'
         if len(self.spotted_by) > 0:
             color = 'green'

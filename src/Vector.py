@@ -76,7 +76,8 @@ class Vec2d:
     '''
     def unit(self):
         if self.is_zero():
-            return None
+            print('unit vector of zero vector')
+            return self
         return self.from_vec(self.vec / self.mag())
 
     '''
@@ -270,8 +271,8 @@ class Vec3d:
     '''
     def unit(self):
         if self.is_zero():
-            print("I'm zero", self.vec)
-            return None
+            print('Unit vector of zero vector')
+            return self
         return self.from_vec(self.vec / self.mag())
 
     '''

@@ -75,7 +75,8 @@ class Basic_Plan(Plan):
         for i, path in enumerate(paths):
             path_with_control = path + [env.base_pos]
             path_speeds = [self.speeds[env.uavs[i].name] for p in path_with_control]
-            final_paths.append((env.uavs[i], Path(path_with_control, path_speeds)))
+            path_times = [0.0 for p in path_with_control]
+            final_paths.append((env.uavs[i], Path(path_with_control, path_speeds, path_times)))
 
         return final_paths
 

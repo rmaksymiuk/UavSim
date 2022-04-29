@@ -53,7 +53,7 @@ def get_sig(bal_point, scaling_val, l_bound=0, u_bound=1):
     def sig(x):
         num = np.exp(scaling_val * (x - bal_point))
         denom = np.exp(scaling_val * (x - bal_point)) + 1
-        return p_range * num / (denom + 1)
+        return p_range * num / (denom + 1) + l_bound
     return sig
 
 
@@ -86,11 +86,20 @@ def convert_3d(poly, z=0):
 '''
 Randomly spawn objects in a given environment going a certain speed
 Assumes that velocities can only have a direction in the x, y plane. No z
+Visible freq defines how often the object is visible and visible count defines
+how many times the object is visible. Used with time_estimate, these can generate
+random visibility intervals
 '''
-def spawn_objects(n, otype, poly, focus_perf=1, non_focus_perf=0.4, speed=1):
+def spawn_objects(n, otype, poly, focus_perf=1, non_focus_perf=0.4, speed=1, 
+        visible_freq=None, visible_count=None, time_estimate=None):
+
+
     start_points = gen_random(poly, n)
     env_objects = []
+    visible_starts, visible_ends = (None, None)
     for i in range(n):
+        if visible_freq and visible_count and time_estimate:
+            visible_starts, visible_ends = get_visible_intervals(visible_freq, visible_count, time_estimate)
         rand_vel = Vec3d().gen_random()
         rand_vel.set_z(0)
         env_objects.append(Env_Object({
@@ -99,8 +108,34 @@ def spawn_objects(n, otype, poly, focus_perf=1, non_focus_perf=0.4, speed=1):
             'init_pos': start_points[i].to_Vec3d(), 
             'focus_performance': focus_perf,
             'non_focus_performance': non_focus_perf,
-            'init_vel': rand_vel.scale(speed)}))
+            'init_vel': rand_vel.scale(speed),
+            'visible': (visible_starts, visible_ends)}))
+            
     return env_objects
+
+
+'''
+Over a given interval of time, return `count` intervals that cover `freq` proportion
+of time.
+
+The algorithm works like this. We create a list of chuncks where each chunk is a random
+size but they all add up to the total time. While there are still chuncks, we insert
+the chunks at a random location between the end of the last chunck, and the start of
+the rest of the chuncks if they were squished at the end. 
+'''
+def get_visible_intervals(freq, count, time):
+    chunks_bounds = np.sort(np.random.uniform(low=0, high=time * freq, size=count))
+    chunks = chunks_bounds[1:] - chunks_bounds[:-1]
+    last_end = 0
+    starts = []
+    ends = []
+    for i, chunk in enumerate(chunks):
+        insert_at = np.random.uniform(low=last_end, high=time - chunks[i:].sum())
+        last_end = insert_at + chunk
+        starts.append(insert_at)
+        ends.append(last_end)
+    return starts, ends
+
 
 
 '''

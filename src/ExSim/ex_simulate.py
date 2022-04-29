@@ -8,6 +8,7 @@ from UAV import UAV
 from Environment import Environment
 from Env_Object import Env_Object
 from Basic_Plan import Basic_Plan
+from Change_Alt_Plan import Change_Alt_Plan
 import util
 
 def sim():
@@ -18,7 +19,7 @@ def sim():
         'init_energy': 100,
         'focus': 'shark',
         'name': 'uav1',
-        'role': 'observer'
+        'role': 'observer',
     }
     uav2_config = {
         'init_pos': control_pos,
@@ -88,12 +89,17 @@ def sim():
         ])
     
     sharks = util.spawn_objects(5, 'shark', env_boundary)
+    crazy_sharks = util.spawn_objects(
+                        5, 'shark', env_boundary, 
+                        visible_freq=0.9,
+                        visible_count=3,
+                        time_estimate=500)
     fishes = util.spawn_objects(3, 'fish', env_boundary, non_focus_perf=0.7)
 
     #Environment configured with Changing Altitude Plan
     env_config = {
         'uavs': [UAV(uav1_config), UAV(uav2_config), UAV(uav3_config)],
-        'objects': sharks + fishes,
+        'objects': crazy_sharks + fishes,
         'boundary': env_boundary,
         'base_pos': control_pos,
         'plan': Basic_Plan({}),

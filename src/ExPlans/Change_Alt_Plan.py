@@ -1,8 +1,6 @@
-# This module gives an example of a plan where UAVs have
-#   different roles. There are "Observer" UAVs and "Base"
-#   UAVs. The "Observer" UAVs fly at a high altitude, while
-#   the "Base" UAVs maintain a low altitude and visit sites
-#   where they think there might be a drone
+## Example Plan implementation that makes a UAV
+##  Dive down to get a better look at an object each time
+##  it sees one
 
 
 import util
@@ -11,17 +9,18 @@ from shapely.geometry import Point, Polygon
 from Vector import Vec2d, Vec3d
 from Path import Path
 from Plan import Plan
-import sys
 
-class Cell_Plan(Plan):
+class Change_Alt_Plan(Plan):
     '''
     Plan class will get a configuration dictionary as input
     to set the variables of a particular plan
     '''
     def __init__(self, config):
-        super(Cell_Plan, self).__init__(config)
+        super(Change_Alt_Plan, self).__init__(config)
         self.traverse_alt = util.set_or_default(config, 'traverse_alt', 30)
         self.speeds = util.set_or_default(config, 'uav_speeds', None)
+        # Stop at each interesting waypoint for 10s
+        self.watch_time = util.set_or_default(config, 'watch_time', 1)
         self.default_speed = 20
 
 
@@ -68,12 +67,8 @@ class Cell_Plan(Plan):
                     centroids.append(new_square.centroid)
 
         # Each drone will be assigned an even number of squares
-        baseCounter = 0
-        for drone in env.uavs:
-            if drone.role == 'base':
-                baseCounter = baseCounter + 1
-        squares_per_drone = np.ceil(len(squares) / (len(env.uavs) - baseCounter))
-        paths = [[] for uav in range(len(env.uavs) - baseCounter)]
+        squares_per_drone = np.ceil(len(squares) / len(env.uavs))
+        paths = [[] for uav in env.uavs]
         for i, centroid in enumerate(centroids):
             cur_drone = int(i // squares_per_drone)
             paths[cur_drone].append(Vec3d(centroid.x, centroid.y, self.traverse_alt))
@@ -82,46 +77,21 @@ class Cell_Plan(Plan):
         final_paths = []
         for i, path in enumerate(paths):
             path_with_control = path + [env.base_pos]
-            print(path_with_control)
             path_speeds = [self.speeds[env.uavs[i].name] for p in path_with_control]
-            final_paths.append((env.uavs[i], Path(path_with_control, path_speeds)))
-        #print(final_paths)
-        #print(type(final_paths))
-        #for i in final_paths:
-        #    print(i)
-        #sys.exit()
+            path_times = [0 for p in path_with_control] # UAVs don't wait at waypoints by default
+            final_paths.append((env.uavs[i], Path(path_with_control, path_speeds, path_times)))
+
         return final_paths
 
-
     def update_paths(self, env, spotted):
-        free_drones = []
         paths = []
-        final_paths = []
-        # Adding the drones with none path to an array
-        for possible_free_drone in env.uavs:
-            if possible_free_drone.role == 'base':
-                free_drones.append(possible_free_drone)
-        print("UAVs: ", env.uavs)
-        # print("Free Drones: ")
-        # print(free_drones)
         for uav, pts in spotted:
-            if uav.role == 'observer':
-                for pt in pts:
-                    # sets the amplitude of the drone to be z = 15
-                    pt3d = pt.to_Vec3d(15)
-                    paths.append(pt3d)
-                    print("Pt: ", pt3d)
-        if not free_drones:
-            return []
-        else:
-            test = len(paths)
-            print("Len :", test)
-            speed_counter = len(paths)
-            lst = [20] * (speed_counter + 1)
-            final_paths.append((free_drones[0], Path(paths + [env.base_pos], lst)))
-            #final_paths.append((free_drones[0], Path([env.base_pos], [20])))
-            return final_paths
-        # return []
+            pt = pts[0].to_Vec3d(10)
+            paths.append((uav, Path([pt] + uav.path.points, 
+                [self.default_speed] + uav.path.speeds, 
+                [self.watch_time] + uav.path.times)))
+        return paths
+
 
     '''
     At the given traversal altitude, 

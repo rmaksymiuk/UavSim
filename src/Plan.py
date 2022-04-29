@@ -7,6 +7,8 @@
 import util
 import numpy as np
 from shapely.geometry import Point, Polygon
+from Vector import Vec2d, Vec3d
+from Path import Path
 
 class Plan:
     '''

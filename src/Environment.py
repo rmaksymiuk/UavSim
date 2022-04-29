@@ -2,11 +2,11 @@ import util
 from shapely.geometry import Point, Polygon
 import numpy as np
 import pandas as pd
-from Basic_Plan import Basic_Plan
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from shapely.ops import unary_union
 from Vector import Vec3d
+from Basic_Plan import Basic_Plan
 from Wind import Wind
 import os
 import shutil
@@ -20,9 +20,9 @@ class Environment:
         # constants
         self.fig_out_dir = os.path.join('..', 'figs')
 
-        self.vid_out_dir = os.path.join('..', 'results')
-        self.vid_out_path = os.path.join('..', 'results', 'sim.mp4')
-        self.stats_out_path = os.path.join('..', 'results', 'stats.csv')
+        self.results_path = os.path.join('..', 'results')
+        self.vid_name = 'sim.mp4'
+        self.stats_name = 'stats.csv'
 
 
         # configs
@@ -101,19 +101,27 @@ class Environment:
         if plotting:
             self.create_dirs()
             self.clear_fig_output()
-        while True:
-            self.step(plotting)
-            end = True
-            for uav in self.uavs:
-                if uav.path:
-                    end = False
+        try:
+            while True:
+                self.step(plotting)
+                end = True
+                for uav in self.uavs:
+                    if uav.path:
+                        end = False
+                        break
+                if end:
                     break
-            if end:
-                break
-            if self.mission_time and (self.total_time > self.mission_time):
-                break
+                if self.mission_time and (self.total_time > self.mission_time):
+                    break
+        except Exception as e:
+            print(e)
+            if plotting:
+                util.create_video(os.path.join(self.results_path, 'Incomplete_' + self.vid_name), self.fig_out_dir)
+                self.clean_up()
+            self.get_stats(error=True)
+            exit()
         if plotting:
-            util.create_video(self.vid_out_path, self.fig_out_dir)
+            util.create_video(os.path.join(self.results_path, self.vid_name), self.fig_out_dir)
             self.clean_up()
         self.get_stats()
         end = datetime.datetime.now()
@@ -186,9 +194,10 @@ class Environment:
 
     '''
     Create a dataframe with the statistics for this simulation and output it to
-    the result directory
+    the result directory. Error indicates whether or not the simulation ended
+    gracefully. If it did not, then the stats file should have the prefix "Incomplete"
     '''
-    def get_stats(self):
+    def get_stats(self, error=False):
         # Get type df: Contains count of each type of object: Type, Count
         count_df = self.get_type_df()
         # Build UAV df
@@ -233,8 +242,8 @@ class Environment:
         all_df = pd.concat([uav_df, total_values.to_frame().transpose()], axis=0).reset_index()
 
         # Final Calculations
-        all_df.loc[(all_df['TP'] == 0) & (all_df['FN'] == 0), 'FN'] = np.nan # Handle div by 0 if no TP or FN
-        all_df.loc[(all_df['TP'] == 0) & (all_df['FP'] == 0), 'FP'] = np.nan # Handle div by 0 if no TP or FP
+        all_df.loc[(all_df['TP'] == 0) & (all_df['FN'] == 0), ['TP', 'FN']] = np.nan # Handle div by 0 if no TP or FN
+        all_df.loc[(all_df['TP'] == 0) & (all_df['FP'] == 0), ['TP', 'FP']] = np.nan # Handle div by 0 if no TP or FP
         all_df['Precision'] = all_df['TP'] / (all_df['TP'] + all_df['FP'])
         all_df['Recall'] = all_df['TP'] / (all_df['TP'] + all_df['FN'])
         all_df['F1'] = 2 * all_df['Precision'] * all_df['Recall'] / (all_df['Precision'] + all_df['Recall'])
@@ -243,7 +252,9 @@ class Environment:
 
         interesting_cols = all_df[['Name', 'Precision', 'Recall', 'F1', 'Energy_Used', 'PCT_Covered', 'PCT_Spotted']]
         print(interesting_cols)
-        interesting_cols.to_csv(self.stats_out_path, index=False)
+        prefix = 'Incomplete_' if error else ''
+        interesting_cols.to_csv(os.path.join(self.results_path, prefix + self.stats_name), index=False)
+
 
 
 
@@ -327,8 +338,8 @@ class Environment:
         # make the figure output directory if it doesn't exist
         if not os.path.exists(self.fig_out_dir):
             os.mkdir(self.fig_out_dir)
-        if not os.path.exists(self.vid_out_dir):
-            os.mkdir(self.vid_out_dir)
+        if not os.path.exists(self.results_path):
+            os.mkdir(self.results_path)
 
     '''
     Delete figure directory and its contents
